@@ -1,18 +1,18 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import Navbar from './components/Navbar';
-import StudentDashboard from './pages/StudentDashboard';
-import AdminPage from './pages/AdminPage';
-import Login from './pages/Login';
-import TrilhaAprendizado from './pages/TrilhaAprendizado';
-import Profile from './pages/Profile';
-import PerfilUsuario from './pages/PerfilUsuario';
-import QuizDemo from './pages/QuizDemo';
-import Ranking from './pages/Ranking';
-import Register from './pages/Register';
-import Footer from './components/Footer';
-import FloatingChat from './components/FloatingChat';
-import './index.css';
+import React from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import Navbar from "./components/Navbar";
+import StudentDashboard from "./pages/StudentDashboard";
+import AdminPage from "./pages/AdminPage";
+import Login from "./pages/Login";
+import TrilhaAprendizado from "./pages/TrilhaAprendizado";
+import Profile from "./pages/Profile";
+import PerfilUsuario from "./pages/PerfilUsuario";
+import QuizDemo from "./pages/QuizDemo";
+import Ranking from "./pages/Ranking";
+import Register from "./pages/Register";
+import Footer from "./components/Footer";
+import FloatingChat from "./components/FloatingChat";
+import "./index.css";
 
 function App() {
   return (
@@ -38,4 +38,3 @@ function App() {
 }
 
 export default App;
-

@@ -1,7 +1,7 @@
-const db = require('./database');
+const db = require("./database");
 const email = process.argv[2];
 if (!email) {
-  console.error('Uso: node promote-admin.js <email>');
+  console.error("Uso: node promote-admin.js <email>");
   process.exit(1);
 }
 
@@ -23,16 +23,25 @@ function get(sql, params = []) {
 }
 
 (async () => {
-  const user = await get('SELECT id, nome, email, cargo FROM usuarios WHERE email = ?', [email]);
+  const user = await get(
+    "SELECT id, nome, email, cargo FROM usuarios WHERE email = ?",
+    [email]
+  );
   if (!user) {
-    console.error('Usuário não encontrado:', email);
+    console.error("Usuário não encontrado:", email);
     process.exit(2);
   }
-  if (user.cargo === 'admin') {
-    console.log('Usuário já é admin:', user.email);
+  if (user.cargo === "admin") {
+    console.log("Usuário já é admin:", user.email);
     process.exit(0);
   }
-  const result = await run('UPDATE usuarios SET cargo = ? WHERE id = ?', ['admin', user.id]);
-  console.log('Promovido para admin:', user.email, 'changes=', result.changes);
+  const result = await run("UPDATE usuarios SET cargo = ? WHERE id = ?", [
+    "admin",
+    user.id,
+  ]);
+  console.log("Promovido para admin:", user.email, "changes=", result.changes);
   process.exit(0);
-})().catch(err => { console.error(err); process.exit(3); });
+})().catch((err) => {
+  console.error(err);
+  process.exit(3);
+});

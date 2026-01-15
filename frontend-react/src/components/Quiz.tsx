@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from "react";
 
 type QuizProps = {
   questions: { question: string; options: string[]; answer: number }[];
@@ -22,7 +22,8 @@ const Quiz = ({ questions, onComplete }: QuizProps) => {
       setSelected(null);
     } else {
       const total = questions.length;
-      const nextScore = selected === questions[current].answer ? score + 1 : score;
+      const nextScore =
+        selected === questions[current].answer ? score + 1 : score;
       const threshold = Math.ceil(total * 0.7); // 70% para passar
       setPassed(nextScore >= threshold);
       setFinished(true);
@@ -39,37 +40,71 @@ const Quiz = ({ questions, onComplete }: QuizProps) => {
 
   if (finished)
     return (
-      <div className={`relative p-4 rounded shadow border ${passed ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'} ${passed ? 'anim-pop-in' : 'anim-shake'}`} role="alert" aria-live="polite">
+      <div
+        className={`relative p-4 rounded shadow border ${
+          passed ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"
+        } ${passed ? "anim-pop-in" : "anim-shake"}`}
+        role="alert"
+        aria-live="polite"
+      >
         <h3 className="font-bold text-lg mb-2" ref={resultRef} tabIndex={-1}>
-          {passed ? 'Você passou! 🎉' : 'Você não atingiu a pontuação mínima'}
+          {passed ? "Você passou! 🎉" : "Você não atingiu a pontuação mínima"}
         </h3>
         <p>
           Você acertou {score} de {questions.length} perguntas.
-          {passed ? ' Excelente desempenho!' : ' Continue praticando e tente novamente.'}
+          {passed
+            ? " Excelente desempenho!"
+            : " Continue praticando e tente novamente."}
         </p>
 
         {passed && (
           <div aria-hidden="true">
-            <span className="confetti-piece" style={{ left: '15%', bottom: '0', animationDelay: '0ms' }}>🎉</span>
-            <span className="confetti-piece" style={{ left: '35%', bottom: '0', animationDelay: '100ms' }}>🎊</span>
-            <span className="confetti-piece" style={{ left: '55%', bottom: '0', animationDelay: '200ms' }}>✨</span>
-            <span className="confetti-piece" style={{ left: '75%', bottom: '0', animationDelay: '300ms' }}>🎉</span>
+            <span
+              className="confetti-piece"
+              style={{ left: "15%", bottom: "0", animationDelay: "0ms" }}
+            >
+              🎉
+            </span>
+            <span
+              className="confetti-piece"
+              style={{ left: "35%", bottom: "0", animationDelay: "100ms" }}
+            >
+              🎊
+            </span>
+            <span
+              className="confetti-piece"
+              style={{ left: "55%", bottom: "0", animationDelay: "200ms" }}
+            >
+              ✨
+            </span>
+            <span
+              className="confetti-piece"
+              style={{ left: "75%", bottom: "0", animationDelay: "300ms" }}
+            >
+              🎉
+            </span>
           </div>
         )}
       </div>
     );
 
   return (
-    <div className="relative p-4 bg-white rounded shadow" aria-label="Quiz" role="group">
+    <div
+      className="relative p-4 bg-white rounded shadow"
+      aria-label="Quiz"
+      role="group"
+    >
       <h3 className="font-bold mb-2">{questions[current].question}</h3>
       <ul className="mb-2" role="list">
         {questions[current].options.map((opt, idx) => (
           <li key={idx}>
             <button
-              className={`w-full text-left p-2 rounded mb-1 border ${selected === idx ? 'bg-blue-200' : 'bg-gray-100'}`}
+              className={`w-full text-left p-2 rounded mb-1 border ${
+                selected === idx ? "bg-blue-200" : "bg-gray-100"
+              }`}
               onClick={() => handleOption(idx)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
+                if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
                   handleOption(idx);
                 }
@@ -87,9 +122,13 @@ const Quiz = ({ questions, onComplete }: QuizProps) => {
         onClick={handleNext}
         disabled={selected === null}
         aria-disabled={selected === null}
-        aria-label={current + 1 === questions.length ? 'Finalizar quiz' : 'Próxima pergunta'}
+        aria-label={
+          current + 1 === questions.length
+            ? "Finalizar quiz"
+            : "Próxima pergunta"
+        }
       >
-        {current + 1 === questions.length ? 'Finalizar' : 'Próxima'}
+        {current + 1 === questions.length ? "Finalizar" : "Próxima"}
       </button>
     </div>
   );

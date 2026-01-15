@@ -1,15 +1,15 @@
-const fs = require('fs');
-const path = require('path');
-const sqlite3 = require('sqlite3').verbose();
+const fs = require("fs");
+const path = require("path");
+const sqlite3 = require("sqlite3").verbose();
 
 // Ensure DB directory exists
-const dataDir = path.join(__dirname, 'data');
+const dataDir = path.join(__dirname, "data");
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
 // Separate chat database file
-const dbPath = path.join(dataDir, 'chat.db');
+const dbPath = path.join(dataDir, "chat.db");
 const db = new sqlite3.Database(dbPath);
 
 // Initialize schema for chat messages (no cross-DB foreign key)

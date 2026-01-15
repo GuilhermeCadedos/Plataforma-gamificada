@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 interface ProgressBarProps {
   xp: number;
@@ -6,14 +6,14 @@ interface ProgressBarProps {
   xpToNextLevel: number;
 }
 
-const ProgressBar: React.FC<ProgressBarProps> = ({ xp, level, xpToNextLevel }) => {
+const ProgressBar: React.FC<ProgressBarProps> = ({
+  xp,
+  level,
+  xpToNextLevel,
+}) => {
   const percent = Math.min((xp / xpToNextLevel) * 100, 100);
   return (
-    <div
-      className="mb-4"
-      role="group"
-      aria-label="Progresso de experiência"
-    >
+    <div className="mb-4" role="group" aria-label="Progresso de experiência">
       <div className="flex justify-between mb-1">
         <span className="text-sm font-medium text-blue-700">Nível {level}</span>
         <span className="text-sm font-medium text-blue-700">{xp} XP</span>
@@ -31,7 +31,9 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ xp, level, xpToNextLevel }) =
           style={{ width: `${percent}%` }}
         ></div>
       </div>
-      <div className="text-xs text-right text-gray-500 mt-1">{xpToNextLevel - xp} XP para o próximo nível</div>
+      <div className="text-xs text-right text-gray-500 mt-1">
+        {xpToNextLevel - xp} XP para o próximo nível
+      </div>
     </div>
   );
 };

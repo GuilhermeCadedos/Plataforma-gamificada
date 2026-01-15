@@ -11,9 +11,11 @@
   will-change: filter;
   transition: filter 300ms;
 }
+
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
 }
+
 .logo.solid:hover {
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
@@ -29,20 +31,24 @@
 .btn-upload {
   display: inline-block;
   padding: 8px 14px;
-  background: linear-gradient(180deg,#0b1320 0%,#0f1a2a 100%);
+  background: linear-gradient(180deg, #0b1320 0%, #0f1a2a 100%);
   color: #fff;
   border-radius: 10px;
   cursor: pointer;
   font-weight: 600;
-  box-shadow: 0 6px 18px rgba(11,19,32,0.25);
+  box-shadow: 0 6px 18px rgba(11, 19, 32, 0.25);
   display: inline-flex;
   align-items: center;
   gap: 8px;
   font-size: 0.95rem;
 }
+
 .btn-upload:hover {
   opacity: 0.96;
   transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(11,19,32,0.28);
+  box-shadow: 0 10px 24px rgba(11, 19, 32, 0.28);
 }
-.btn-upload:active { transform: translateY(0); }
+
+.btn-upload:active {
+  transform: translateY(0);
+}

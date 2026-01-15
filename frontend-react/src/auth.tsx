@@ -1,5 +1,5 @@
-import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import React from "react";
+import { Navigate, useLocation } from "react-router-dom";
 
 export type AuthPayload = {
   id: number;
@@ -10,11 +10,11 @@ export type AuthPayload = {
 };
 
 export function getAuth() {
-  const token = localStorage.getItem('token') || null;
+  const token = localStorage.getItem("token") || null;
   let user: AuthPayload | null = null;
   if (token) {
     try {
-      const parts = token.split('.');
+      const parts = token.split(".");
       if (parts.length === 3) {
         user = JSON.parse(atob(parts[1]));
       }
@@ -23,17 +23,21 @@ export function getAuth() {
   return { token, user };
 }
 
-export const RequireAuth: React.FC<{ children: JSX.Element }> = ({ children }) => {
+export const RequireAuth: React.FC<{ children: JSX.Element }> = ({
+  children,
+}) => {
   const { token } = getAuth();
   const loc = useLocation();
   if (!token) return <Navigate to="/entrar" replace state={{ from: loc }} />;
   return children;
 };
 
-export const RequireAdmin: React.FC<{ children: JSX.Element }> = ({ children }) => {
+export const RequireAdmin: React.FC<{ children: JSX.Element }> = ({
+  children,
+}) => {
   const { token, user } = getAuth();
   const loc = useLocation();
   if (!token) return <Navigate to="/entrar" replace state={{ from: loc }} />;
-  if (!user || user.cargo !== 'admin') return <Navigate to="/aluno" replace />;
+  if (!user || user.cargo !== "admin") return <Navigate to="/aluno" replace />;
   return children;
 };

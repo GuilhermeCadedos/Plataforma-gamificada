@@ -1,11 +1,12 @@
 Instalação e dependências — Tutorial (Windows / PowerShell)
 
 Pré-requisitos
+
 - Node.js 18+ instalado
 - npm (vem com Node.js)
 - Git (opcional)
 
-1) Backend — instalar dependências e iniciar
+1. Backend — instalar dependências e iniciar
 
 Abra PowerShell na pasta `backend`:
 
@@ -18,6 +19,7 @@ npm run start
 ```
 
 Dependências principais (backend)
+
 - express — servidor HTTP/rotas
 - sqlite3 — banco de dados local (arquivo)
 - multer — upload multipart/form-data
@@ -28,7 +30,7 @@ Dependências principais (backend)
 - axios / form-data — (usados em scripts auxiliares)
 - @google/generative-ai — biblioteca opcional presente no projeto
 
-2) Frontend — instalar dependências e iniciar (React + Vite)
+2. Frontend — instalar dependências e iniciar (React + Vite)
 
 Abra PowerShell na pasta `frontend-react`:
 
@@ -44,6 +46,7 @@ npx vite --port 5173
 ```
 
 Dependências principais (frontend)
+
 - react, react-dom — biblioteca UI
 - react-router-dom — roteamento
 - vite — bundler/dev server
@@ -52,11 +55,13 @@ Dependências principais (frontend)
 - canvas-confetti — pequenos efeitos de confete para acertos
 - @types/react / @types/react-dom / @types/node — dev types
 
-3) Variáveis de ambiente importantes
+3. Variáveis de ambiente importantes
+
 - `VITE_API_BASE` (frontend) — URL base da API backend
 - `.env` (backend) — `JWT_SECRET`, `PORT` (opcional), `DATABASE_PATH` (se necessário)
 
-4) Banco de dados e seeds
+4. Banco de dados e seeds
+
 - O backend inclui scripts de seed (`seed/` e `seed.js`) e utilitários (`import-content.js`) para popular `conteudos`.
 - Para popular o DB local, execute os scripts fornecidos, por exemplo:
 
@@ -67,12 +72,13 @@ node import-content.js
 node seed.js
 ```
 
-5) Notas de execução e troubleshooting
+5. Notas de execução e troubleshooting
+
 - Porta ocupada: se `npm run dev` retornar erro de porta ocupada, force outra porta com `npx vite --port 5173` ou mate o processo que usa a porta (no PowerShell: `Get-Process -Id <PID> | Stop-Process -Force`).
 - Logs: verifique a saída do terminal do backend para erros de DB/rotas e o console do navegador para erros CORS/autenticação.
 - Produção: para implantar, construa o frontend (`npm run build`) e sirva os arquivos estáticos por um servidor (Nginx, S3+CloudFront). Use um DB gerenciado em vez de SQLite.
 
-6) Comandos úteis resumidos
+6. Comandos úteis resumidos
 
 ```powershell
 # Backend
@@ -88,13 +94,15 @@ npm run dev
 npx vite --port 5173
 ```
 
-7) Onde procurar ajuda
+7. Onde procurar ajuda
+
 - Logs: `backend/index.js` e arquivos na pasta `backend/`.
 - Config: `frontend-react/vite.config.ts`, `frontend-react/tsconfig.json`, e `backend/.env`.
 
 Fim do tutorial
 
 Se quiser, eu posso:
+
 - Gerar um `README_DOCS.md` que combine estes três documentos em um só arquivo principal;
 - Adicionar exemplos de `.env.example` para backend e frontend;
 - Criar scripts npm para popular o DB automaticamente.

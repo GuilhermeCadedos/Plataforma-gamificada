@@ -1,21 +1,21 @@
-const fs = require('fs');
-const path = require('path');
-const sqlite3 = require('sqlite3').verbose();
-const bcrypt = require('bcryptjs');
+const fs = require("fs");
+const path = require("path");
+const sqlite3 = require("sqlite3").verbose();
+const bcrypt = require("bcryptjs");
 
 // Ensure DB directory exists
-const dataDir = path.join(__dirname, 'data');
+const dataDir = path.join(__dirname, "data");
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-const dbPath = path.join(dataDir, 'app.db');
+const dbPath = path.join(dataDir, "app.db");
 const db = new sqlite3.Database(dbPath);
 
 // Initialize schema
 db.serialize(() => {
   // Enforce foreign keys
-  db.run('PRAGMA foreign_keys = ON');
+  db.run("PRAGMA foreign_keys = ON");
 
   // usuarios
   db.run(`
@@ -35,22 +35,22 @@ db.serialize(() => {
   // Ensure legacy DBs get new columns
   db.all("PRAGMA table_info(usuarios)", [], (err, rows) => {
     if (!err && Array.isArray(rows)) {
-      const hasAvatar = rows.some(r => r.name === 'avatar');
-      const hasFoto = rows.some(r => r.name === 'foto_perfil');
+      const hasAvatar = rows.some((r) => r.name === "avatar");
+      const hasFoto = rows.some((r) => r.name === "foto_perfil");
       if (!hasAvatar) {
-        db.run('ALTER TABLE usuarios ADD COLUMN avatar TEXT');
-        console.log('Migrated: added column avatar to usuarios');
+        db.run("ALTER TABLE usuarios ADD COLUMN avatar TEXT");
+        console.log("Migrated: added column avatar to usuarios");
       }
       if (!hasFoto) {
-        db.run('ALTER TABLE usuarios ADD COLUMN foto_perfil TEXT');
-        console.log('Migrated: added column foto_perfil to usuarios');
+        db.run("ALTER TABLE usuarios ADD COLUMN foto_perfil TEXT");
+        console.log("Migrated: added column foto_perfil to usuarios");
       }
-      const hasFotoBlob = rows.some(r => r.name === 'foto_blob');
+      const hasFotoBlob = rows.some((r) => r.name === "foto_blob");
       if (!hasFotoBlob) {
         // store image binary optionally as BLOB for stronger persistence
         try {
-          db.run('ALTER TABLE usuarios ADD COLUMN foto_blob BLOB');
-          console.log('Migrated: added column foto_blob to usuarios');
+          db.run("ALTER TABLE usuarios ADD COLUMN foto_blob BLOB");
+          console.log("Migrated: added column foto_blob to usuarios");
         } catch (e) {}
       }
     }
@@ -73,9 +73,9 @@ db.serialize(() => {
   // Migrar coluna xp se banco antigo não possuir
   db.all("PRAGMA table_info(conteudos)", [], (err, rows) => {
     if (!err && Array.isArray(rows)) {
-      const hasXp = rows.some(r => r.name === 'xp');
+      const hasXp = rows.some((r) => r.name === "xp");
       if (!hasXp) {
-        db.run('ALTER TABLE conteudos ADD COLUMN xp INTEGER DEFAULT 10');
+        db.run("ALTER TABLE conteudos ADD COLUMN xp INTEGER DEFAULT 10");
       }
     }
   });
@@ -124,13 +124,14 @@ db.serialize(() => {
 
 // Function to create or update an admin user
 async function createOrUpdateAdminUser() {
-  const email = 'cadcadedos@gmail.com';
-  const nome = 'administrador principal';
-  const senha = 'silvane80';
+  const email = "cadcadedos@gmail.com";
+  const nome = "administrador principal";
+  const senha = "silvane80";
   const hash = await bcrypt.hash(senha, 12);
 
-  const findUserSql = 'SELECT id FROM usuarios WHERE email = ?';
-  const insertUserSql = 'INSERT INTO usuarios (nome, email, senha, cargo) VALUES (?, ?, ?, ?)';
+  const findUserSql = "SELECT id FROM usuarios WHERE email = ?";
+  const insertUserSql =
+    "INSERT INTO usuarios (nome, email, senha, cargo) VALUES (?, ?, ?, ?)";
 
   return new Promise((resolve, reject) => {
     db.get(findUserSql, [email], (err, row) => {
@@ -138,13 +139,17 @@ async function createOrUpdateAdminUser() {
 
       if (row) {
         // Update existing user
-        db.run(`UPDATE usuarios SET nome = ?, senha = ?, cargo = ? WHERE email = ?`, [nome, hash, 'admin', email], function (err) {
-          if (err) return reject(err);
-          resolve({ id: row.id, updated: true });
-        });
+        db.run(
+          `UPDATE usuarios SET nome = ?, senha = ?, cargo = ? WHERE email = ?`,
+          [nome, hash, "admin", email],
+          function (err) {
+            if (err) return reject(err);
+            resolve({ id: row.id, updated: true });
+          }
+        );
       } else {
         // Insert new user
-        db.run(insertUserSql, [nome, email, hash, 'admin'], function (err) {
+        db.run(insertUserSql, [nome, email, hash, "admin"], function (err) {
           if (err) return reject(err);
           resolve({ id: this.lastID, updated: false });
         });
@@ -155,13 +160,13 @@ async function createOrUpdateAdminUser() {
 
 // Call the function to create or update the admin user
 createOrUpdateAdminUser()
-  .then(result => {
+  .then((result) => {
     if (result.updated) {
       console.log(`Admin user updated with ID: ${result.id}`);
     } else {
       console.log(`Admin user created with ID: ${result.id}`);
     }
   })
-  .catch(err => console.error('Error creating or updating admin user:', err));
+  .catch((err) => console.error("Error creating or updating admin user:", err));
 
 module.exports = db;
