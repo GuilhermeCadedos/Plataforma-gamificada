@@ -1,0 +1,19 @@
+[
+  { "materia": "Matemática", "ordem": 1, "titulo": "Fundamentos: operações e propriedades", "url": null },
+  { "materia": "Matemática", "ordem": 2, "titulo": "Frações e decimais sem mistério", "url": null },
+  { "materia": "Matemática", "ordem": 3, "titulo": "Porcentagem prática no dia a dia", "url": null },
+
+  { "materia": "Lógica", "ordem": 4, "titulo": "Proposições, conectivos e tabelas-verdade", "url": null },
+  { "materia": "Lógica", "ordem": 5, "titulo": "Equivalências e leis de De Morgan", "url": null },
+  { "materia": "Lógica", "ordem": 6, "titulo": "Argumentos válidos: modus ponens e modus tollens", "url": null },
+
+  { "materia": "Física", "ordem": 7, "titulo": "Cinemática: movimento, velocidade e aceleração", "url": null },
+  { "materia": "Física", "ordem": 8, "titulo": "Leis de Newton: forças em ação", "url": null },
+  { "materia": "Física", "ordem": 9, "titulo": "Trabalho, energia e conservação", "url": null },
+
+  { "materia": "Português Instrumental", "ordem": 10, "titulo": "Leitura de gráficos e tabelas", "url": null },
+  { "materia": "Português Instrumental", "ordem": 11, "titulo": "Relatórios técnicos: estrutura e linguagem", "url": null },
+
+  { "materia": "Inglês Técnico", "ordem": 12, "titulo": "Tech Glossary I: termos essenciais", "url": null },
+  { "materia": "Inglês Técnico", "ordem": 13, "titulo": "Reading docs: padrões e dicas", "url": null }
+]

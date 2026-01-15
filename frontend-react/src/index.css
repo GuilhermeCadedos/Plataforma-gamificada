@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+/* Tailwind v4 theme tokens for custom colors */
+@theme {
+  --color-bridgeBlue-600: #1e4fb8;
+  --color-bridgeBlue-700: #173f93;
+  --color-bridgeBlue-800: #102e6d;
+  --color-bridgeTeal-500: #0ea5a5;
+  --color-bridgeTeal-600: #0c8d8d;
+  --color-bridgeGold-500: #d4af37;
+  --color-bridgeGold-600: #b8941c;
+}
+
+/* Base design */
+:root {
+  --bg: #f7fafc; /* gray-50 */
+  --text: #1f2937; /* gray-800 */
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  @apply bg-gray-50 text-gray-800 antialiased font-sans;
+}
+
+/* Dark mode base styles */
+html {
+  color-scheme: light dark;
+}
+html.dark {
+  color-scheme: dark;
+}
+
+.dark body {
+  @apply bg-gray-900 text-gray-100;
+}
+
+.card {
+  @apply bg-white rounded-xl shadow-sm border border-gray-200;
+}
+.dark .card {
+  @apply bg-gray-900 border-gray-800;
+}
+
+.container-page {
+  @apply max-w-6xl mx-auto px-4 md:px-6 lg:px-8;
+}
+
+.card {
+  @apply bg-white rounded-xl shadow-sm border border-gray-200;
+}
+
+.btn {
+  @apply inline-flex items-center justify-center rounded-md font-medium transition-colors;
+}
+.btn-primary {
+  @apply bg-blue-700 text-white hover:bg-blue-800;
+}
+.btn-outline {
+  @apply bg-white text-gray-800 border border-gray-300 hover:bg-gray-100;
+}
+.dark .btn-outline {
+  @apply bg-gray-800 text-gray-100 border border-gray-700 hover:bg-gray-700;
+}
+
+/* Quiz animations */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+.anim-shake {
+  animation: shake 500ms ease-in-out 1;
+}
+
+@keyframes popIn {
+  0% { transform: scale(0.85); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.anim-pop-in {
+  animation: popIn 400ms ease-out 1;
+}
+
+@keyframes confettiUp {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(-120px) rotate(360deg); opacity: 0; }
+}
+
+.confetti-piece {
+  position: absolute;
+  font-size: 22px;
+  animation: confettiUp 800ms ease-out forwards;
+}
