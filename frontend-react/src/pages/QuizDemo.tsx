@@ -1,10 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import QuizInterativo from "../components/QuizInterativo";
 
-// Use Vite env var (import.meta.env) instead of process.env to avoid runtime errors
-const API_BASE =
-  (import.meta.env.VITE_API_BASE as string) || "http://localhost:3001";
-
 const QuizDemo: React.FC = () => {
   const [quiz, setQuiz] = useState<any>(null);
   const [materias, setMaterias] = useState<
@@ -908,7 +904,7 @@ const QuizDemo: React.FC = () => {
             (c: any) =>
               c.id !== chosen.id &&
               c.explicacao &&
-              String(c.explicacao).trim().length > 0
+              String(c.explicacao).trim().length > 0,
           )
           .map((c: any) => String(c.explicacao).trim());
         if (candidates.length < 3) {
@@ -917,7 +913,7 @@ const QuizDemo: React.FC = () => {
             .map((c: any) =>
               c.explicacao && String(c.explicacao).trim().length > 0
                 ? String(c.explicacao).trim()
-                : String(c.titulo).trim()
+                : String(c.titulo).trim(),
             );
         }
         candidates = Array.from(new Set(candidates));
@@ -982,7 +978,7 @@ const QuizDemo: React.FC = () => {
             op_d: d?.text || "",
             correta: q.correta,
           };
-          const res = await fetch(`${API_BASE}/api/quizzes`, {
+          const res = await fetch(`/api/quizzes`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -1001,21 +997,21 @@ const QuizDemo: React.FC = () => {
       qs.forEach((q) => void persistQuestion(q));
       setQIndex(0);
     },
-    [conteudos]
+    [conteudos],
   );
 
   useEffect(() => {
     (async () => {
       try {
-        const r = await fetch(`${API_BASE}/api/conteudos`);
+        const r = await fetch(`/api/conteudos`);
         if (!r.ok) return;
         const list = await r.json();
         // Some environments (PowerShell tests) return { value: [...] } — normalize
         const dataList = Array.isArray(list)
           ? list
           : Array.isArray(list?.value)
-          ? list.value
-          : [];
+            ? list.value
+            : [];
         setConteudos(dataList || []);
         // group by materia and pick first conteudo id per materia
         const map = new Map<string, number>();
@@ -1029,7 +1025,7 @@ const QuizDemo: React.FC = () => {
         }));
         setMaterias(arr);
         const distinct = Array.from(
-          new Set((dataList || []).map((c: any) => c.materia))
+          new Set((dataList || []).map((c: any) => c.materia)),
         ).filter(Boolean);
         setDistinctMaterias(distinct);
         if (arr.length > 0) setSelected(arr[0].materia);
@@ -1044,7 +1040,7 @@ const QuizDemo: React.FC = () => {
           .replace(/^Bearer\s+/i, "")
           .trim();
         if (!token) return;
-        const r = await fetch(`${API_BASE}/api/auth/me`, {
+        const r = await fetch(`/api/auth/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!r.ok) return;
@@ -1075,7 +1071,7 @@ const QuizDemo: React.FC = () => {
         .replace(/^Bearer\s+/i, "")
         .trim();
       if (!conteudoId) return;
-      const res = await fetch(`${API_BASE}/api/progresso/${conteudoId}`, {
+      const res = await fetch(`/api/progresso/${conteudoId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -1122,8 +1118,8 @@ const QuizDemo: React.FC = () => {
     qIndex < questions.length
       ? questions[qIndex]
       : questions && questions.length > 0
-      ? questions[0]
-      : null;
+        ? questions[0]
+        : null;
 
   return (
     <div className="container-page py-8">

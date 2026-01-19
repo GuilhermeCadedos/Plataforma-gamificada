@@ -6,16 +6,25 @@ const API_BASE = "";
 const FloatingChat = () => {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { from: "tutor", text: "Olá! Sou o Tutor Gêmeos. Como posso ajudar?" },
+    { from: "tutor", text: "Olá! Sou o Tutor. Como posso ajudar?" },
   ]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
   const [checkingTutor, setCheckingTutor] = useState(false);
   const [tutorOk, setTutorOk] = useState<boolean | null>(null);
+  const [tutorProvider, setTutorProvider] = useState<string>("");
   const [tutorModel, setTutorModel] = useState<string>("");
   const [lastLatencyMs, setLastLatencyMs] = useState<number | null>(null);
   const [lastStatus, setLastStatus] = useState<string>("");
+
+  const providerLabel = (p: string) => {
+    const v = String(p || "").toLowerCase();
+    if (v === "openai") return "OpenAI";
+    if (v === "huggingface" || v === "hf") return "Hugging Face";
+    if (v === "gemini") return "Gemini";
+    return "Tutor";
+  };
 
   useEffect(() => {
     if (open && chatRef.current) {
@@ -46,8 +55,19 @@ const FloatingChat = () => {
       const res = await fetch(`${API_BASE}/api/health`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      setTutorOk(!!data?.hasGemini);
-      setTutorModel(typeof data?.model === "string" ? data.model : "");
+      const ok = !!(data?.hasOpenAI || data?.hasHf || data?.hasGemini);
+      setTutorOk(ok);
+      const provider = data?.hasOpenAI
+        ? "openai"
+        : data?.hasHf
+          ? "huggingface"
+          : data?.hasGemini
+            ? "gemini"
+            : "";
+      setTutorProvider(typeof provider === "string" ? provider : "");
+      const model =
+        data?.openaiModel || data?.hfModel || data?.geminiModel || data?.model;
+      setTutorModel(typeof model === "string" ? model : "");
     } catch (_) {
       setTutorOk(false);
     } finally {
@@ -87,6 +107,9 @@ const FloatingChat = () => {
           typeof data?.answer === "string"
             ? data.answer
             : "Sem resposta do tutor.";
+        const provider = data?.context?.provider;
+        if (typeof provider === "string" && provider)
+          setTutorProvider(provider);
         const details = data?.context?.error
           ? ` (detalhe: ${String(data.context.error).slice(0, 120)})`
           : "";
@@ -131,6 +154,9 @@ const FloatingChat = () => {
           typeof data?.answer === "string"
             ? data.answer
             : "Sem resposta do tutor.";
+        const provider = data?.context?.provider;
+        if (typeof provider === "string" && provider)
+          setTutorProvider(provider);
         setMessages((prev) => [
           ...prev,
           { from: "tutor", text: cleanText(answer) },
@@ -153,11 +179,11 @@ const FloatingChat = () => {
           className="w-80 bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-800 flex flex-col"
           role="dialog"
           aria-modal="true"
-          aria-label="Janela de chat com Tutor Gemini"
+          aria-label="Janela de chat com Tutor OpenAI"
         >
           <div className="bg-bridgeBlue-700 text-white p-3 rounded-t-xl flex justify-between items-center">
             <span id="chat-title" className="flex items-center gap-2">
-              Tutor Gemini
+              Tutor {providerLabel(tutorProvider)}
               <span
                 className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded ${
                   tutorOk ? "bg-green-600" : "bg-red-600"
@@ -262,7 +288,7 @@ const FloatingChat = () => {
         <button
           className="bg-bridgeGold-500 text-gray-900 rounded-full w-16 h-16 shadow-xl flex items-center justify-center text-3xl hover:bg-bridgeGold-600"
           onClick={() => setOpen(true)}
-          aria-label="Abrir chat com Tutor Gemini"
+          aria-label="Abrir chat com Tutor OpenAI"
           aria-expanded={open}
         >
           💬

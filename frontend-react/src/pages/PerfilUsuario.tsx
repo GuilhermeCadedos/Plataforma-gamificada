@@ -75,7 +75,7 @@ const PerfilUsuario: React.FC = () => {
   }, []);
 
   const handleProfilePictureUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     if (event.target.files && event.target.files[0]) {
       const formData = new FormData();
@@ -112,19 +112,22 @@ const PerfilUsuario: React.FC = () => {
   useEffect(() => {
     (async () => {
       try {
-        const API_BASE =
-          (import.meta.env.VITE_API_BASE as string) || "http://localhost:3001";
         const token = localStorage.getItem("token") || "";
         if (!token) return;
-        const r = await fetch(`${API_BASE}/api/auth/me`, {
+        const r = await fetch(`/api/auth/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!r.ok) return;
         const j = await r.json();
         if (typeof j?.xp === "number") setXp(j.xp);
         if (typeof j?.nivel === "number") setNivelNum(j.nivel);
-        if (j?.foto_perfil) setProfilePicture(j.foto_perfil);
-        else if (j?.avatar) setAvatar(j.avatar);
+        if (j?.foto_perfil) {
+          const resolved = resolveStoredUrl(j.foto_perfil);
+          setProfilePicture(resolved);
+          try {
+            localStorage.setItem("profilePicture", resolved || "");
+          } catch {}
+        } else if (j?.avatar) setAvatar(j.avatar);
       } catch {}
     })();
   }, []);

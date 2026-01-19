@@ -11,7 +11,7 @@ const Profile: React.FC = () => {
   const xpToNextLevel = 200;
 
   const handleProfilePictureUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     if (event.target.files && event.target.files[0]) {
       const formData = new FormData();
@@ -27,14 +27,14 @@ const Profile: React.FC = () => {
           "Uploading profile picture — token length:",
           token.length,
           "startsWithBearer?:",
-          /^Bearer\s+/i.test(localStorage.getItem("token") || "")
+          /^Bearer\s+/i.test(localStorage.getItem("token") || ""),
         );
         if (!token) {
           alert("Você não está autenticado. Faça login antes de subir a foto.");
           return;
         }
 
-        const response = await fetch(`${API_BASE}/api/profile/upload-picture`, {
+        const response = await fetch(`/api/profile/upload-picture`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -57,7 +57,7 @@ const Profile: React.FC = () => {
             (data && data.error && data.error.toLowerCase().includes("token"))
           ) {
             alert(
-              "Token inválido ou expirado. Você será redirecionado para a página de login."
+              "Token inválido ou expirado. Você será redirecionado para a página de login.",
             );
             localStorage.removeItem("token");
             window.location.href = "/entrar";
@@ -85,10 +85,6 @@ const Profile: React.FC = () => {
     return maybePath;
   };
 
-  // Use Vite env var (import.meta.env) instead of process.env to avoid runtime errors
-  const API_BASE =
-    (import.meta.env.VITE_API_BASE as string) || "http://localhost:3001";
-
   useEffect(() => {
     (async () => {
       try {
@@ -104,7 +100,7 @@ const Profile: React.FC = () => {
           .trim();
         if (!token) return;
         console.debug("/api/auth/me fetch — token length", token.length);
-        const r = await fetch(`${API_BASE}/api/auth/me`, {
+        const r = await fetch(`/api/auth/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!r.ok) {

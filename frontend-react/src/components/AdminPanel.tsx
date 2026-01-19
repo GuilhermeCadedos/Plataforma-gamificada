@@ -32,7 +32,7 @@ const AdminPanel: React.FC<{ userRole: string }> = ({ userRole }) => {
   }
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
@@ -40,7 +40,7 @@ const AdminPanel: React.FC<{ userRole: string }> = ({ userRole }) => {
   const handleQuizChange = (
     idx: number,
     field: string,
-    value: string | number
+    value: string | number,
   ) => {
     const quiz = [...form.quiz];
     if (field === "question") quiz[idx].question = value as string;
@@ -63,7 +63,7 @@ const AdminPanel: React.FC<{ userRole: string }> = ({ userRole }) => {
     }
     try {
       // 1) Criar conteúdo
-      const res = await fetch("http://localhost:3001/api/conteudos", {
+      const res = await fetch("/api/conteudos", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -86,7 +86,7 @@ const AdminPanel: React.FC<{ userRole: string }> = ({ userRole }) => {
       for (const q of form.quiz) {
         const letras = ["A", "B", "C", "D"];
         const correta = letras[q.answer] || "A";
-        const qRes = await fetch("http://localhost:3001/api/quizzes", {
+        const qRes = await fetch("/api/quizzes", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

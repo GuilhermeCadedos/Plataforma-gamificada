@@ -1,8 +1,5 @@
 import React, { useEffect, useState } from "react";
 
-const API_BASE =
-  (import.meta.env.VITE_API_BASE as string) || "http://localhost:3001";
-
 type User = {
   id: number;
   nome: string;
@@ -17,7 +14,7 @@ const Ranking: React.FC = () => {
   useEffect(() => {
     (async () => {
       try {
-        const r = await fetch(`${API_BASE}/api/ranking`);
+        const r = await fetch(`/api/ranking`);
         if (!r.ok) return setUsers([]);
         const j = await r.json();
         setUsers(Array.isArray(j) ? j : []);
@@ -29,6 +26,17 @@ const Ranking: React.FC = () => {
       }
     })();
   }, []);
+
+  const resolvePhotoUrl = (p?: string | null) => {
+    if (!p) return null;
+    if (/^https?:\/\//i.test(p)) return p;
+    if (p.startsWith("/uploads")) {
+      const host = window.location.hostname || "localhost";
+      const proto = window.location.protocol || "http:";
+      return `${proto}//${host}:3001${p}`;
+    }
+    return p;
+  };
 
   return (
     <div className="container-page py-8">
@@ -53,7 +61,7 @@ const Ranking: React.FC = () => {
                 <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex items-center justify-center">
                   {u.foto_perfil ? (
                     <img
-                      src={`${API_BASE}${u.foto_perfil}`}
+                      src={resolvePhotoUrl(u.foto_perfil) || ""}
                       alt={u.nome}
                       className="w-full h-full object-cover"
                     />

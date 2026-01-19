@@ -5,7 +5,7 @@ const API_BASE = "";
 
 const ApiHealth: React.FC = () => {
   const [status, setStatus] = useState<"idle" | "ok" | "error" | "loading">(
-    "idle"
+    "idle",
   );
   const [detail, setDetail] = useState<string>("");
 
@@ -16,10 +16,25 @@ const ApiHealth: React.FC = () => {
       const res = await fetch(`${API_BASE}/api/health`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      const tutor = data?.hasGemini ? "ativo" : "indisponível";
-      const model = data?.model || "desconhecido";
+      const hasTutor = !!(data?.hasOpenAI || data?.hasHf || data?.hasGemini);
+      const tutor = hasTutor ? "ativo" : "indisponível";
+      const provider = data?.hasOpenAI
+        ? "OpenAI"
+        : data?.hasHf
+          ? "Hugging Face"
+          : data?.hasGemini
+            ? "Gemini"
+            : "(nenhum)";
+      const model =
+        data?.openaiModel ||
+        data?.hfModel ||
+        data?.geminiModel ||
+        data?.model ||
+        "desconhecido";
       setStatus("ok");
-      setDetail(`API OK — Tutor: ${tutor} — Modelo: ${model}`);
+      setDetail(
+        `API OK — Tutor: ${tutor} — Provider: ${provider} — Modelo: ${model}`,
+      );
     } catch (e: any) {
       setStatus("error");
       setDetail(e?.message || "Erro ao conectar");
@@ -42,8 +57,8 @@ const ApiHealth: React.FC = () => {
           status === "ok"
             ? "text-green-700"
             : status === "error"
-            ? "text-red-700"
-            : "text-gray-700"
+              ? "text-red-700"
+              : "text-gray-700"
         }
       >
         {status === "loading" && "Verificando API..."}

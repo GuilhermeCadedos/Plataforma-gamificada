@@ -3,7 +3,10 @@ const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+// OpenAI client (SDK v4+)
+let openai = null;
+let hfOpenai = null;
 const db = require("./database");
 const chatdb = require("./chatdb");
 const {
@@ -19,6 +22,32 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+const HF_TOKEN = process.env.HF_TOKEN || "";
+const HF_BASE_URL =
+  process.env.HF_BASE_URL || "https://router.huggingface.co/v1";
+if (OPENAI_API_KEY) {
+  try {
+    const OpenAI = require("openai");
+    const OpenAIClient = OpenAI.default || OpenAI;
+    openai = new OpenAIClient({ apiKey: OPENAI_API_KEY });
+  } catch (e) {
+    console.warn("OpenAI init failed:", e && e.message);
+    openai = null;
+  }
+}
+
+// Hugging Face Router (OpenAI-compatible)
+if (HF_TOKEN) {
+  try {
+    const OpenAI = require("openai");
+    const OpenAIClient = OpenAI.default || OpenAI;
+    hfOpenai = new OpenAIClient({ apiKey: HF_TOKEN, baseURL: HF_BASE_URL });
+  } catch (e) {
+    console.warn("HF Router init failed:", e && e.message);
+    hfOpenai = null;
+  }
+}
 
 app.use(cors());
 app.use(express.json());
@@ -36,11 +65,27 @@ app.use((err, req, res, next) => {
 
 // Health check simples para depurar integração no frontend
 app.get("/api/health", (req, res) => {
+  const safeModel = (v, fallback) => {
+    const s = String(v || fallback || "").replace(/[\r\n]/g, " ");
+    return s.split(/\s+/)[0].slice(0, 60);
+  };
+  const safeUrl = (v, fallback) => {
+    const s = String(v || fallback || "").replace(/[\r\n]/g, " ");
+    return s.slice(0, 120);
+  };
   return res.json({
     ok: true,
     port: PORT,
+    hasOpenAI: !!OPENAI_API_KEY,
+    hasHf: !!HF_TOKEN,
     hasGemini: !!GEMINI_API_KEY,
-    model: process.env.GEMINI_MODEL || "gemini-1.5-flash",
+    openaiModel: safeModel(process.env.OPENAI_MODEL, "gpt-4o-mini"),
+    hfModel: safeModel(
+      process.env.HF_MODEL,
+      "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
+    ),
+    hfBaseUrl: safeUrl(process.env.HF_BASE_URL, HF_BASE_URL),
+    geminiModel: safeModel(process.env.GEMINI_MODEL, "gemini-pro"),
   });
 });
 
@@ -102,11 +147,9 @@ app.post("/api/auth/register", async (req, res) => {
       /[A-Za-z]/.test(senha) &&
       /\d/.test(senha);
     if (!senhaOk)
-      return res
-        .status(400)
-        .json({
-          error: "Senha fraca: mínimo 8 caracteres com letras e números",
-        });
+      return res.status(400).json({
+        error: "Senha fraca: mínimo 8 caracteres com letras e números",
+      });
 
     const existing = await get("SELECT id FROM usuarios WHERE email = ?", [
       email,
@@ -119,7 +162,7 @@ app.post("/api/auth/register", async (req, res) => {
     const role = "aluno";
     const result = await run(
       "INSERT INTO usuarios (nome, email, senha, xp, nivel, cargo) VALUES (?, ?, ?, 0, 1, ?)",
-      [nome, email, hash, role]
+      [nome, email, hash, role],
     );
     return res
       .status(201)
@@ -145,7 +188,7 @@ app.post("/api/auth/login", async (req, res) => {
     const token = jwt.sign(
       { id: user.id, cargo: user.cargo, nome: user.nome, email: user.email },
       JWT_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: "7d" },
     );
     return res.json({ token });
   } catch (err) {
@@ -160,7 +203,7 @@ app.get("/api/auth/me", authenticateToken, async (req, res) => {
     // incluir avatar e foto_perfil para que front-end possa mostrar a foto persistida
     const user = await get(
       "SELECT id, nome, email, xp, nivel, cargo, avatar, foto_perfil FROM usuarios WHERE id = ?",
-      [req.user.id]
+      [req.user.id],
     );
     if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
     return res.json(user);
@@ -175,7 +218,7 @@ app.get("/api/usuarios", authenticateToken, requireAdmin, async (req, res) => {
   try {
     // incluir avatar e foto_perfil para administração
     const users = await all(
-      "SELECT id, nome, email, xp, nivel, cargo, avatar, foto_perfil FROM usuarios ORDER BY id ASC"
+      "SELECT id, nome, email, xp, nivel, cargo, avatar, foto_perfil FROM usuarios ORDER BY id ASC",
     );
     return res.json(users);
   } catch (err) {
@@ -193,7 +236,7 @@ app.get(
       const id = Number(req.params.id);
       const user = await get(
         "SELECT id, nome, email, xp, nivel, cargo, avatar, foto_perfil FROM usuarios WHERE id = ?",
-        [id]
+        [id],
       );
       if (!user)
         return res.status(404).json({ error: "Usuário não encontrado" });
@@ -202,7 +245,7 @@ app.get(
       console.error(err);
       return res.status(500).json({ error: "Erro ao obter usuário" });
     }
-  }
+  },
 );
 
 app.put(
@@ -227,14 +270,14 @@ app.put(
 
       await run(
         "UPDATE usuarios SET nome = ?, email = ?, cargo = ? WHERE id = ?",
-        [newNome, newEmail, newCargo, id]
+        [newNome, newEmail, newCargo, id],
       );
       return res.json({ message: "Usuário atualizado" });
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: "Erro ao atualizar usuário" });
     }
-  }
+  },
 );
 
 app.delete(
@@ -252,14 +295,14 @@ app.delete(
       console.error(err);
       return res.status(500).json({ error: "Erro ao remover usuário" });
     }
-  }
+  },
 );
 
 // Ranking público: top usuários por XP
 app.get("/api/ranking", async (req, res) => {
   try {
     const top = await all(
-      "SELECT id, nome, xp, nivel, avatar, foto_perfil FROM usuarios ORDER BY xp DESC, nivel DESC LIMIT 50"
+      "SELECT id, nome, xp, nivel, avatar, foto_perfil FROM usuarios ORDER BY xp DESC, nivel DESC LIMIT 50",
     );
     return res.json(top || []);
   } catch (err) {
@@ -272,7 +315,7 @@ app.get("/api/ranking", async (req, res) => {
 app.get("/api/conteudos", async (req, res) => {
   try {
     const items = await all(
-      "SELECT * FROM conteudos ORDER BY ordem ASC, id ASC"
+      "SELECT * FROM conteudos ORDER BY ordem ASC, id ASC",
     );
     return res.json(items);
   } catch (err) {
@@ -300,7 +343,7 @@ app.post(
       }
       const result = await run(
         "INSERT INTO conteudos (materia, titulo, tipo, url, explicacao, ordem) VALUES (?, ?, ?, ?, ?, ?)",
-        [materia, titulo, tipo, url ?? null, explicacao ?? null, ordem ?? null]
+        [materia, titulo, tipo, url ?? null, explicacao ?? null, ordem ?? null],
       );
       return res
         .status(201)
@@ -309,7 +352,7 @@ app.post(
       console.error(err);
       return res.status(500).json({ error: "Erro ao criar conteúdo" });
     }
-  }
+  },
 );
 
 // Atualizar conteúdo (admin)
@@ -335,22 +378,22 @@ app.put(
       const newMateria = materia ?? existing.materia;
       const newTitulo = titulo ?? existing.titulo;
       const newTipo = tipo ?? existing.tipo;
-      const newUrl = url === undefined ? existing.url : url ?? null;
+      const newUrl = url === undefined ? existing.url : (url ?? null);
       const newExp =
-        explicacao === undefined ? existing.explicacao : explicacao ?? null;
-      const newOrdem = ordem === undefined ? existing.ordem : ordem ?? null;
-      const newXp = typeof xp === "number" ? xp : existing.xp ?? 10;
+        explicacao === undefined ? existing.explicacao : (explicacao ?? null);
+      const newOrdem = ordem === undefined ? existing.ordem : (ordem ?? null);
+      const newXp = typeof xp === "number" ? xp : (existing.xp ?? 10);
 
       await run(
         "UPDATE conteudos SET materia = ?, titulo = ?, tipo = ?, url = ?, explicacao = ?, ordem = ?, xp = ? WHERE id = ?",
-        [newMateria, newTitulo, newTipo, newUrl, newExp, newOrdem, newXp, id]
+        [newMateria, newTitulo, newTipo, newUrl, newExp, newOrdem, newXp, id],
       );
       return res.json({ message: "Conteúdo atualizado" });
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: "Erro ao atualizar conteúdo" });
     }
-  }
+  },
 );
 
 // Remover conteúdo (admin)
@@ -370,7 +413,7 @@ app.delete(
       console.error(err);
       return res.status(500).json({ error: "Erro ao remover conteúdo" });
     }
-  }
+  },
 );
 
 // Quizzes
@@ -403,7 +446,7 @@ app.post("/api/quizzes", authenticateToken, requireAdmin, async (req, res) => {
 
     const result = await run(
       "INSERT INTO quizzes (conteudo_id, pergunta, op_a, op_b, op_c, op_d, correta) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      [conteudo_id, pergunta, op_a, op_b, op_c, op_d, correta]
+      [conteudo_id, pergunta, op_a, op_b, op_c, op_d, correta],
     );
     return res.status(201).json({ id: result.id, message: "Quiz criado" });
   } catch (err) {
@@ -426,7 +469,7 @@ app.get(
       if (conteudoId) {
         rows = await all(
           "SELECT * FROM quizzes WHERE conteudo_id = ? ORDER BY id ASC",
-          [conteudoId]
+          [conteudoId],
         );
       } else {
         rows = await all("SELECT * FROM quizzes ORDER BY id ASC");
@@ -436,7 +479,7 @@ app.get(
       console.error(err);
       return res.status(500).json({ error: "Erro ao listar quizzes" });
     }
-  }
+  },
 );
 
 // Obter quiz individual (admin)
@@ -454,7 +497,7 @@ app.get(
       console.error(err);
       return res.status(500).json({ error: "Erro ao obter quiz" });
     }
-  }
+  },
 );
 
 // Atualizar quiz (admin)
@@ -485,14 +528,14 @@ app.put(
 
       await run(
         "UPDATE quizzes SET pergunta = ?, op_a = ?, op_b = ?, op_c = ?, op_d = ?, correta = ? WHERE id = ?",
-        [newPergunta, newA, newB, newC, newD, newCorreta, id]
+        [newPergunta, newA, newB, newC, newD, newCorreta, id],
       );
       return res.json({ message: "Quiz atualizado" });
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: "Erro ao atualizar quiz" });
     }
-  }
+  },
 );
 
 // Remover quiz (admin)
@@ -511,7 +554,7 @@ app.delete(
       console.error(err);
       return res.status(500).json({ error: "Erro ao remover quiz" });
     }
-  }
+  },
 );
 
 // Obter quiz por conteúdo
@@ -520,7 +563,7 @@ app.get("/api/quizzes/:conteudoId", async (req, res) => {
     const conteudoId = Number(req.params.conteudoId);
     const quiz = await all(
       "SELECT id, conteudo_id, pergunta, op_a, op_b, op_c, op_d FROM quizzes WHERE conteudo_id = ?",
-      [conteudoId]
+      [conteudoId],
     );
     return res.json(quiz);
   } catch (err) {
@@ -545,7 +588,7 @@ app.put("/api/progresso/:conteudoId", authenticateToken, async (req, res) => {
     // Marcar progresso concluído (upsert)
     await run(
       "INSERT INTO progresso (usuario_id, conteudo_id, concluido) VALUES (?, ?, 1) ON CONFLICT(usuario_id, conteudo_id) DO UPDATE SET concluido = excluded.concluido",
-      [usuarioId, conteudoId]
+      [usuarioId, conteudoId],
     );
 
     // Atualizar XP e nível
@@ -573,8 +616,120 @@ app.put("/api/progresso/:conteudoId", authenticateToken, async (req, res) => {
 
 // Removido duplicado: já existe health detalhado acima
 
-// Tutor (Gemini) com localizador
-const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
+// Tutor (Gemini) via REST API (v1)
+async function geminiGenerateContent({ apiKey, model, prompt }) {
+  const modelId = String(model || "").startsWith("models/")
+    ? String(model || "").slice("models/".length)
+    : String(model || "");
+  const url = `https://generativelanguage.googleapis.com/v1/models/${encodeURIComponent(
+    modelId,
+  )}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+    }),
+  });
+
+  if (!resp.ok) {
+    const raw = await resp.text().catch(() => "");
+    const err = new Error(
+      `Gemini HTTP ${resp.status}${raw ? ": " + raw.slice(0, 300) : ""}`,
+    );
+    err.status = resp.status;
+    throw err;
+  }
+
+  const data = await resp.json();
+  const parts = data?.candidates?.[0]?.content?.parts;
+  const text = Array.isArray(parts)
+    ? parts.map((p) => (typeof p?.text === "string" ? p.text : "")).join("")
+    : "";
+  return text || "";
+}
+
+let geminiModelsCache = {
+  fetchedAtMs: 0,
+  // model ids without "models/" prefix
+  supportedGenerateContent: [],
+};
+
+async function geminiListModels({ apiKey }) {
+  const url = `https://generativelanguage.googleapis.com/v1/models?key=${encodeURIComponent(
+    apiKey,
+  )}`;
+  const resp = await fetch(url, { method: "GET" });
+  if (!resp.ok) {
+    const raw = await resp.text().catch(() => "");
+    const err = new Error(
+      `Gemini ListModels HTTP ${resp.status}${raw ? ": " + raw.slice(0, 300) : ""}`,
+    );
+    err.status = resp.status;
+    throw err;
+  }
+  const data = await resp.json();
+  const models = Array.isArray(data?.models) ? data.models : [];
+  const supported = models
+    .filter((m) => Array.isArray(m?.supportedGenerationMethods))
+    .filter((m) => m.supportedGenerationMethods.includes("generateContent"))
+    .map((m) => String(m?.name || ""))
+    .filter(Boolean)
+    .map((name) => (name.startsWith("models/") ? name.slice(7) : name));
+  return supported;
+}
+
+async function geminiGetSupportedModels({ apiKey }) {
+  const ttlMs = 10 * 60 * 1000; // 10 minutes
+  const now = Date.now();
+  if (
+    geminiModelsCache.supportedGenerateContent.length > 0 &&
+    now - geminiModelsCache.fetchedAtMs < ttlMs
+  ) {
+    return geminiModelsCache.supportedGenerateContent;
+  }
+
+  const supported = await Promise.race([
+    geminiListModels({ apiKey }),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("timeout")), 8000),
+    ),
+  ]);
+
+  geminiModelsCache = {
+    fetchedAtMs: now,
+    supportedGenerateContent: Array.isArray(supported) ? supported : [],
+  };
+  return geminiModelsCache.supportedGenerateContent;
+}
+
+async function geminiPickModel({ apiKey, preferred }) {
+  const supported = await geminiGetSupportedModels({ apiKey });
+  if (!supported || supported.length === 0) {
+    throw new Error("Gemini ListModels returned no supported models");
+  }
+
+  const pref = String(preferred || "").trim();
+  if (pref) {
+    const normalized = pref.startsWith("models/") ? pref.slice(7) : pref;
+    if (supported.includes(normalized)) return normalized;
+  }
+
+  // Choose a sensible default among the supported list
+  const priority = [
+    "gemini-1.5-flash",
+    "gemini-1.5-pro",
+    "gemini-2.0-flash",
+    "gemini-2.0-pro",
+  ];
+  for (const p of priority) {
+    const hit = supported.find((m) => m === p || m.startsWith(p));
+    if (hit) return hit;
+  }
+
+  return supported[0];
+}
 
 async function resolveLocator(req) {
   const now = new Date();
@@ -699,31 +854,164 @@ app.post("/api/tutor", async (req, res) => {
       .filter(Boolean)
       .join("\n");
 
-    // Se Gemini não estiver configurado, responda com fallback em vez de 500
     let text = null;
-    let usedModel = process.env.GEMINI_MODEL || "gemini-flash-latest";
+    let usedModel = null;
     let errorInfo = null;
-    if (!genAI) {
-      text =
-        "Tutor indisponível no momento. Configure GEMINI_API_KEY para ativar respostas inteligentes.";
-      errorInfo = "GEMINI_API_KEY ausente";
-    } else {
+    let usedProvider = null;
+    let lastFriendlyUnavailable = null;
+
+    // Early, explicit config error (keeps UX clear)
+    const hasAnyProvider =
+      (!!OPENAI_API_KEY && !!openai) ||
+      (!!HF_TOKEN && !!hfOpenai) ||
+      !!GEMINI_API_KEY;
+    if (!hasAnyProvider) {
+      return res.status(200).json({
+        answer:
+          "O Tutor está indisponível: configure OPENAI_API_KEY (OpenAI), HF_TOKEN (Hugging Face) ou GEMINI_API_KEY (Gemini) no backend e reinicie o servidor.",
+        context: {
+          provider: null,
+          model: null,
+          error: "missing_openai_api_key",
+        },
+      });
+    }
+
+    // 1. Tenta OpenAI primeiro (se configurado)
+    if (openai && OPENAI_API_KEY) {
       try {
-        const model = genAI.getGenerativeModel({ model: usedModel });
-        const prompt = `${systemPrompt}\n\nPergunta do usuário:\n${pergunta}`;
-        const result = await model.generateContent(prompt);
-        text =
-          result?.response?.text?.() ||
-          result?.response?.candidates?.[0]?.content?.parts?.[0]?.text ||
-          "Sem resposta.";
+        const modelName = process.env.OPENAI_MODEL || "gpt-4o-mini";
+        const messages = [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: pergunta },
+        ];
+        const completion = await openai.chat.completions.create({
+          model: modelName,
+          messages,
+          max_tokens: 400,
+          temperature: 0.7,
+        });
+        text = completion?.choices?.[0]?.message?.content?.trim() || "";
         text = sanitizeTutorText(text);
-      } catch (modelErr) {
-        console.error("Gemini error:", modelErr);
-        text = "Não consegui responder agora. Tente novamente em instantes.";
-        errorInfo = modelErr?.message || String(modelErr);
-        text = sanitizeTutorText(text);
+        usedProvider = "openai";
+        usedModel = modelName;
+      } catch (openaiErr) {
+        console.error("OpenAI error:", openaiErr);
+        errorInfo =
+          "openai: " +
+          (openaiErr?.error?.message ||
+            openaiErr?.message ||
+            String(openaiErr));
+
+        const status = Number(openaiErr?.status || openaiErr?.response?.status);
+        const code = openaiErr?.code || openaiErr?.error?.code;
+        if (status === 401 || code === "invalid_api_key") {
+          lastFriendlyUnavailable =
+            "O Tutor está indisponível: chave da OpenAI inválida. Verifique a OPENAI_API_KEY no backend.";
+        } else if (
+          status === 429 ||
+          code === "insufficient_quota" ||
+          String(openaiErr?.error?.type || "").includes("insufficient_quota")
+        ) {
+          lastFriendlyUnavailable =
+            "O Tutor está indisponível: sem saldo/quota na OpenAI (erro 429). Verifique billing/limites da sua conta.";
+        } else if (status >= 500) {
+          lastFriendlyUnavailable =
+            "O Tutor está indisponível: instabilidade na OpenAI. Tente novamente em instantes.";
+        } else {
+          lastFriendlyUnavailable =
+            "O Tutor está indisponível: erro ao chamar a OpenAI. Tente novamente.";
+        }
+        // keep going to try HF Router / Gemini if available
       }
     }
+
+    // 2. Se OpenAI falhar/não estiver configurado, tenta Hugging Face Router (se configurado)
+    if (!text && hfOpenai && HF_TOKEN) {
+      try {
+        const hfModel =
+          process.env.HF_MODEL || "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B";
+        const messages = [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: pergunta },
+        ];
+        const completion = await hfOpenai.chat.completions.create({
+          model: hfModel,
+          messages,
+          max_tokens: 400,
+          temperature: 0.7,
+        });
+        text = completion?.choices?.[0]?.message?.content?.trim() || "";
+        text = sanitizeTutorText(text);
+        usedProvider = "huggingface";
+        usedModel = hfModel;
+      } catch (hfErr) {
+        console.error("HF Router error:", hfErr);
+        errorInfo =
+          "huggingface: " +
+          (hfErr?.error?.message || hfErr?.message || String(hfErr));
+
+        const status = Number(hfErr?.status || hfErr?.response?.status);
+        if (status === 401) {
+          lastFriendlyUnavailable =
+            "O Tutor está indisponível: token do Hugging Face inválido. Verifique a HF_TOKEN no backend.";
+        } else if (status === 429) {
+          lastFriendlyUnavailable =
+            "O Tutor está indisponível: limite/quota do Hugging Face Router (erro 429). Tente depois ou ajuste o plano.";
+        } else if (status >= 500) {
+          lastFriendlyUnavailable =
+            "O Tutor está indisponível: instabilidade no Hugging Face Router. Tente novamente.";
+        } else {
+          lastFriendlyUnavailable =
+            "O Tutor está indisponível: erro ao chamar Hugging Face Router. Verifique o modelo/configuração.";
+        }
+      }
+    }
+
+    // 3. Se OpenAI/HF não responderem, tenta Gemini (REST v1)
+    if (!text && GEMINI_API_KEY) {
+      try {
+        const prompt = `${systemPrompt}\n\nPergunta do usuário:\n${pergunta}`;
+
+        const selectedModel = await geminiPickModel({
+          apiKey: GEMINI_API_KEY,
+          preferred: process.env.GEMINI_MODEL,
+        });
+        const out = await Promise.race([
+          geminiGenerateContent({
+            apiKey: GEMINI_API_KEY,
+            model: selectedModel,
+            prompt,
+          }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("timeout")), 10000),
+          ),
+        ]);
+        text = sanitizeTutorText(out);
+        usedProvider = "gemini";
+        usedModel = selectedModel;
+      } catch (modelErr) {
+        console.error("Gemini error:", modelErr);
+        errorInfo = "gemini: " + (modelErr?.message || String(modelErr));
+        const status = Number(modelErr?.status || modelErr?.response?.status);
+        if (status === 401 || status === 403) {
+          lastFriendlyUnavailable =
+            "O Tutor está indisponível: chave/permissão do Gemini inválida. Verifique a GEMINI_API_KEY e as permissões do projeto.";
+        } else if (status === 429) {
+          lastFriendlyUnavailable =
+            "O Tutor está indisponível: você excedeu a cota/limite do Gemini (erro 429). Verifique quotas/billing da sua conta/projeto.";
+        } else if (status >= 500) {
+          lastFriendlyUnavailable =
+            "O Tutor está indisponível: instabilidade no Gemini. Tente novamente em instantes.";
+        } else {
+          lastFriendlyUnavailable =
+            "O Tutor está indisponível: erro na Gemini.";
+        }
+      }
+    }
+
+    if (!text)
+      text = lastFriendlyUnavailable || "O Tutor está indisponível no momento.";
 
     // tentar identificar usuario via token opcional
     let usuarioId = null;
@@ -741,21 +1029,22 @@ app.post("/api/tutor", async (req, res) => {
       locator,
       model: usedModel,
       error: errorInfo,
+      provider: usedProvider,
     });
     await run(
       "INSERT INTO tutor_conversas (usuario_id, pergunta, resposta, contexto) VALUES (?, ?, ?, ?)",
-      [usuarioId, pergunta, text, contextJson]
+      [usuarioId, pergunta, text, contextJson],
     );
 
     // persistir no novo arquivo chat.db como mensagens separadas por papel
     try {
       await chatRun(
         "INSERT INTO chat_messages (usuario_id, role, text) VALUES (?, ?, ?)",
-        [usuarioId, "user", pergunta]
+        [usuarioId, "user", pergunta],
       );
       await chatRun(
         "INSERT INTO chat_messages (usuario_id, role, text) VALUES (?, ?, ?)",
-        [usuarioId, "tutor", text]
+        [usuarioId, "tutor", text],
       );
     } catch (e) {
       console.error("Erro ao salvar no chat.db:", e);
@@ -767,6 +1056,7 @@ app.post("/api/tutor", async (req, res) => {
         locator,
         model: usedModel,
         error: errorInfo,
+        provider: usedProvider,
       },
     });
   } catch (err) {
@@ -774,21 +1064,21 @@ app.post("/api/tutor", async (req, res) => {
     // Responder com fallback para evitar 500 no chat
     const fallback =
       "O tutor encontrou um erro inesperado. Tente novamente mais tarde.";
-    return res
-      .status(200)
-      .json({
-        answer: fallback,
-        context: { error: err?.message || String(err) },
-      });
+    return res.status(200).json({
+      answer: fallback,
+      context: { error: err?.message || String(err) },
+    });
   }
 });
+
+// (duplicate block removed) end of /api/tutor handler
 
 // Histórico do chat por usuário (novo arquivo chat.db)
 app.get("/api/chat/messages/me", authenticateToken, async (req, res) => {
   try {
     const rows = await chatAll(
       "SELECT id, role, text, created_at FROM chat_messages WHERE usuario_id = ? ORDER BY id DESC LIMIT 200",
-      [req.user.id]
+      [req.user.id],
     );
     return res.json(rows);
   } catch (err) {
@@ -802,7 +1092,7 @@ app.get("/api/tutor/conversas/me", authenticateToken, async (req, res) => {
   try {
     const rows = await all(
       "SELECT id, pergunta, resposta, contexto, created_at FROM tutor_conversas WHERE usuario_id = ? ORDER BY id DESC",
-      [req.user.id]
+      [req.user.id],
     );
     return res.json(rows);
   } catch (err) {
@@ -819,7 +1109,7 @@ app.get(
   async (req, res) => {
     try {
       const rows = await all(
-        "SELECT id, usuario_id, pergunta, resposta, contexto, created_at FROM tutor_conversas ORDER BY id DESC LIMIT 200"
+        "SELECT id, usuario_id, pergunta, resposta, contexto, created_at FROM tutor_conversas ORDER BY id DESC LIMIT 200",
       );
       return res.json(rows);
     } catch (err) {
@@ -828,7 +1118,7 @@ app.get(
         .status(500)
         .json({ error: "Erro ao listar conversas (admin)" });
     }
-  }
+  },
 );
 
 // Configuração do Multer para upload de imagens
@@ -883,7 +1173,7 @@ app.post(
         const fileBuf = fs.readFileSync(req.file.path);
         await run(
           "UPDATE usuarios SET foto_perfil = ?, foto_blob = ? WHERE id = ?",
-          [filePath, fileBuf, userId]
+          [filePath, fileBuf, userId],
         );
       } catch (e) {
         // fallback: update only path
@@ -896,18 +1186,16 @@ app.post(
       // Construir URL pública absoluta para o frontend (útil com proxies de dev)
       const fileUrl = `${req.protocol}://${req.get("host")}${filePath}`;
 
-      res
-        .status(200)
-        .json({
-          message: "Foto de perfil atualizada com sucesso",
-          filePath,
-          fileUrl,
-        });
+      res.status(200).json({
+        message: "Foto de perfil atualizada com sucesso",
+        filePath,
+        fileUrl,
+      });
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Erro ao fazer upload da foto de perfil" });
     }
-  }
+  },
 );
 
 // Endpoint para atualizar o avatar do usuário
@@ -926,12 +1214,10 @@ app.post("/api/profile/update-avatar", authenticateToken, async (req, res) => {
     res.status(200).json({ message: "Avatar atualizado com sucesso", avatar });
   } catch (err) {
     console.error("Erro em /api/profile/update-avatar:", err);
-    res
-      .status(500)
-      .json({
-        error: "Erro ao atualizar o avatar",
-        detail: err?.message || String(err),
-      });
+    res.status(500).json({
+      error: "Erro ao atualizar o avatar",
+      detail: err?.message || String(err),
+    });
   }
 });
 
@@ -942,7 +1228,7 @@ app.get("/api/usuarios/:id/photo", async (req, res) => {
     if (!id) return res.status(400).json({ error: "Invalid id" });
     const row = await get(
       "SELECT foto_perfil, foto_blob FROM usuarios WHERE id = ?",
-      [id]
+      [id],
     );
     if (!row) return res.status(404).json({ error: "Usuário não encontrado" });
 

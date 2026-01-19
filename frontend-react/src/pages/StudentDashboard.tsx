@@ -7,12 +7,13 @@ import Hero from "../components/Hero";
 import DailyGoals from "../components/DailyGoals";
 import LevelBadge from "../components/LevelBadge";
 
-const API_BASE =
+// Host do backend para servir arquivos (ex.: /uploads). Chamadas de API usam path relativo /api via proxy do Vite.
+const API_HOST =
   (import.meta.env.VITE_API_BASE as string) || "http://localhost:3001";
 
 const resolveStoredUrl = (url?: string | null) => {
   if (!url) return null;
-  return url.startsWith("/uploads") ? `${API_BASE}${url}` : url;
+  return url.startsWith("/uploads") ? `${API_HOST}${url}` : url;
 };
 
 const SHOW_API_HEALTH =
@@ -48,7 +49,7 @@ const StudentDashboard: React.FC = () => {
   const [dailyTarget, setDailyTarget] = useState<number>(() => {
     try {
       const envVal = Number(
-        (import.meta.env.VITE_DAILY_TARGET as string) || ""
+        (import.meta.env.VITE_DAILY_TARGET as string) || "",
       );
       const ls = localStorage.getItem("dailyTarget");
       const base = ls ? Number(ls) : isNaN(envVal) || envVal <= 0 ? 3 : envVal;
@@ -198,7 +199,7 @@ const StudentDashboard: React.FC = () => {
           .trim();
         // fetch user info
         try {
-          const res = await fetch(`${API_BASE}/api/auth/me`, {
+          const res = await fetch(`/api/auth/me`, {
             headers: token ? { Authorization: `Bearer ${token}` } : {},
           });
           if (res.ok) {
@@ -224,7 +225,7 @@ const StudentDashboard: React.FC = () => {
 
         // fetch contents
         try {
-          const r = await fetch(`${API_BASE}/api/conteudos`);
+          const r = await fetch(`/api/conteudos`);
           let grouped: Record<string, Conteudo[]> | null = null;
           if (r.ok) {
             const arr = await r.json();
@@ -258,7 +259,7 @@ const StudentDashboard: React.FC = () => {
               const obj = JSON.parse(fromStorage);
               setLastLesson(obj || null);
               setLastProgress(
-                isNaN(prog) ? 0 : Math.min(100, Math.max(0, prog))
+                isNaN(prog) ? 0 : Math.min(100, Math.max(0, prog)),
               );
             } else {
               const firstModule = Object.keys(grouped)[0];
@@ -289,7 +290,7 @@ const StudentDashboard: React.FC = () => {
 
         // leaderboard
         try {
-          const r2 = await fetch(`${API_BASE}/api/ranking`);
+          const r2 = await fetch(`/api/ranking`);
           if (r2.ok) {
             const top = await r2.json();
             setLeaderboard(Array.isArray(top) ? top.slice(0, 5) : []);
@@ -317,13 +318,13 @@ const StudentDashboard: React.FC = () => {
       localStorage.setItem("lastLesson", JSON.stringify(lesson));
       localStorage.setItem(
         "lastLessonProgress",
-        String(Number(localStorage.getItem("lastLessonProgress")) || 0 || 30)
+        String(Number(localStorage.getItem("lastLessonProgress")) || 0 || 30),
       );
     } catch {}
 
     // Carregar quiz se existir (ou fallback)
     try {
-      const res = await fetch(`${API_BASE}/api/quizzes/${lesson.id}`);
+      const res = await fetch(`/api/quizzes/${lesson.id}`);
       if (res.ok) {
         const arr = await res.json();
         if (Array.isArray(arr) && arr.length > 0) {
@@ -350,7 +351,7 @@ const StudentDashboard: React.FC = () => {
         document
           .getElementById("video")
           ?.scrollIntoView({ behavior: "smooth", block: "start" }),
-      50
+      50,
     );
   };
 
@@ -361,7 +362,7 @@ const StudentDashboard: React.FC = () => {
       const today = new Date();
       const todayKey = toKey(today);
       const yesterdayKey = toKey(
-        new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1)
+        new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1),
       );
 
       // Daily goals progress
@@ -369,7 +370,7 @@ const StudentDashboard: React.FC = () => {
       const newCount = dg?.date === todayKey ? (Number(dg.count) || 0) + 1 : 1;
       localStorage.setItem(
         "dailyGoals",
-        JSON.stringify({ date: todayKey, count: newCount })
+        JSON.stringify({ date: todayKey, count: newCount }),
       );
       setDailyCount(newCount);
 
@@ -386,7 +387,7 @@ const StudentDashboard: React.FC = () => {
       }
       localStorage.setItem(
         "studyStreak",
-        JSON.stringify({ lastDate: todayKey, days })
+        JSON.stringify({ lastDate: todayKey, days }),
       );
       setStreakDays(days);
     } catch {}
@@ -622,7 +623,7 @@ const StudentDashboard: React.FC = () => {
                         <img
                           src={
                             (u.foto_perfil || "").startsWith("/uploads")
-                              ? `${API_BASE}${u.foto_perfil}`
+                              ? `${API_HOST}${u.foto_perfil}`
                               : u.foto_perfil
                           }
                           alt=""
@@ -740,7 +741,7 @@ const StudentDashboard: React.FC = () => {
                     try {
                       const token = localStorage.getItem("token") || "";
                       const res = await fetch(
-                        `${API_BASE}/api/progresso/${selectedLesson.id}`,
+                        `/api/progresso/${selectedLesson.id}`,
                         {
                           method: "PUT",
                           headers: {
@@ -749,7 +750,7 @@ const StudentDashboard: React.FC = () => {
                               ? { Authorization: `Bearer ${token}` }
                               : {}),
                           },
-                        }
+                        },
                       );
                       if (res.ok) {
                         const j = await res.json().catch(() => ({}));
@@ -761,7 +762,7 @@ const StudentDashboard: React.FC = () => {
                             copy[key] = copy[key].map((it) =>
                               it.id === selectedLesson.id
                                 ? { ...it, completed: true }
-                                : it
+                                : it,
                             );
                           }
                           return copy;
@@ -790,7 +791,7 @@ const StudentDashboard: React.FC = () => {
                     if (!selectedLesson) return;
                     try {
                       const res = await fetch(
-                        `${API_BASE}/api/quizzes/${selectedLesson.id}`
+                        `/api/quizzes/${selectedLesson.id}`,
                       );
                       if (!res.ok)
                         return alert("Nenhum quiz disponível para esta aula.");
